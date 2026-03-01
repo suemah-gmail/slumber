@@ -547,7 +547,6 @@ input[type=range]::-webkit-slider-thumb {
           <span class="close-eyes-icon">🌙</span>
           Begin Body Scan
         </button>
-        <div id="bs-loading-status" style="margin-top:12px;font-size:0.78rem;font-style:italic;color:var(--cream-dim);text-align:center;min-height:1.2em;"></div>
       </div>
     </div>
 
@@ -1158,27 +1157,19 @@ function softBell(freq, duration) {
 }
 
 // ══════════════════════════════════════════
-// ELEVENLABS BODY SCAN ENGINE
+// BODY SCAN VOICE ENGINE  (iOS Speech API)
+// ElevenLabs ready — swap fetchLineAudio when credits available
 // ══════════════════════════════════════════
-// Audio is fetched via /api/tts — a Netlify serverless function
-// that holds the API key securely server-side.
 
-const EL_VOICE_ID  = '9BWtsMINqrJLrRacOk9x'; // Aria
+// -- ElevenLabs (re-enable when credits ready) --
+// const EL_VOICE_ID = '9BWtsMINqrJLrRacOk9x'; // Aria
+// async function fetchLineAudio(text) { ... }
 
-// Voice settings — slow, soft, meditation style
-const EL_VOICE_SETTINGS = {
-  stability: 0.75,
-  similarity_boost: 0.85,
-  style: 0.12,
-  use_speaker_boost: false
-};
-
-let bsDuration    = 30;
-let bsRunning     = false;
-let bsTimers      = [];
-let bsStartTime   = null;
-let bsProgressIv  = null;
-let bsAudioBuffers = [];   // decoded AudioBuffer for each line
+let bsDuration     = 30;
+let bsRunning      = false;
+let bsTimers       = [];
+let bsStartTime    = null;
+let bsProgressIv   = null;
 let bsCurrentSource = null;
 
 function selectBsDur(mins, el) {
@@ -1187,51 +1178,100 @@ function selectBsDur(mins, el) {
   bsDuration = mins;
 }
 
-// ── Fetch one line → decoded AudioBuffer via proxy ───────
-async function fetchLineAudio(text) {
-  const resp = await fetch('/api/tts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text })
-  });
-  if (!resp.ok) throw new Error(`TTS error ${resp.status}: ${await resp.text()}`);
-  const arrayBuf = await resp.arrayBuffer();
-  return await getAC().decodeAudioData(arrayBuf);
+// ── Voice selection — best available on iPad ─────────────
+// Priority: Siri voices > Enhanced local > any local English > any English
+let _voice = null;
+function getBestVoice() {
+  if (_voice) return _voice;
+  const all = window.speechSynthesis.getVoices();
+  if (!all.length) return null;
+  const pick = [
+    v => /siri/i.test(v.name) && v.lang.startsWith('en'),
+    v => v.localService && !v.name.includes('Compact') && v.lang.startsWith('en-'),
+    v => v.localService && v.lang.startsWith('en'),
+    v => v.lang.startsWith('en'),
+  ];
+  for (const fn of pick) {
+    const m = all.find(fn);
+    if (m) { _voice = m; return m; }
+  }
+  _voice = all[0];
+  return _voice;
+}
+if (window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => { _voice = null; getBestVoice(); };
+  getBestVoice();
 }
 
-// ── Pre-generate all audio, then begin ───────────────────
-async function startBodyScan() {
-  unlockAudio();
-  const btn    = document.getElementById('bs-begin-btn');
-  const status = document.getElementById('bs-loading-status');
+// ── Speak one line, then pause, then call onDone ─────────
+let _utt = null;
+function speakLine(text, pauseAfter, onDone) {
+  if (!bsRunning) return;
+  const utt  = new SpeechSynthesisUtterance(text);
+  utt.rate   = 0.82;
+  utt.pitch  = 0.95;
+  utt.volume = 1.0;
+  const v = getBestVoice();
+  if (v) utt.voice = v;
+  let done = false;
+  function finish() {
+    if (done) return; done = true;
+    if (!bsRunning) return;
+    const t = setTimeout(onDone, pauseAfter);
+    bsTimers.push(t);
+  }
+  utt.onend   = finish;
+  utt.onerror = e => { if (e.error !== 'interrupted') finish(); };
+  _utt = utt;
+  window.speechSynthesis.speak(utt);
+}
 
-  btn.disabled = true;
-  btn.style.opacity = '0.5';
+// ── iOS keepalive — Safari pauses TTS after ~15s ─────────
+let _kaIv = null;
+function startKeepalive() {
+  _kaIv = setInterval(() => {
+    if (!bsRunning) return;
+    const ss = window.speechSynthesis;
+    if (ss.paused) ss.resume();
+    // If nothing is playing or queued, nudge it
+    if (!ss.speaking && !ss.pending && _utt) ss.speak(_utt);
+  }, 10000);
+}
+function stopKeepalive() { clearInterval(_kaIv); _kaIv = null; }
 
-  const script = buildScript(bsDuration);
-  const total  = script.length;
-  bsAudioBuffers = [];
-
-  status.textContent = 'Preparing your session…';
-
-  try {
-    for (let i = 0; i < total; i++) {
-      if (!btn.disabled) return; // cancelled mid-load
-      status.textContent = `Preparing… ${Math.round((i / total) * 100)}%`;
-      const buf = await fetchLineAudio(script[i].text);
-      bsAudioBuffers.push({ buffer: buf, pauseAfter: script[i].pauseAfter });
-    }
-  } catch(err) {
-    status.textContent = `Error: ${err.message}`;
-    btn.disabled = false;
-    btn.style.opacity = '1';
+// ── Run script lines sequentially ────────────────────────
+function runScript(lines, i) {
+  if (!bsRunning || i >= lines.length) {
+    if (bsRunning) finishBodyScan();
     return;
   }
+  document.getElementById('ec-phase-hint').textContent = lines[i].text;
+  speakLine(lines[i].text, lines[i].pauseAfter, () => runScript(lines, i + 1));
+}
 
-  // All audio ready — go dark
-  status.textContent = '';
-  btn.disabled = false;
-  btn.style.opacity = '1';
+// ── Progress bar ──────────────────────────────────────────
+function startProgressBar(totalMs) {
+  const bar = document.getElementById('ec-progress-bar');
+  const lbl = document.getElementById('ec-time-left');
+  bsProgressIv = setInterval(() => {
+    const e = Date.now() - bsStartTime;
+    bar.style.width = Math.min(e / totalMs * 100, 100) + '%';
+    const r = Math.max(0, Math.round((totalMs - e) / 1000));
+    lbl.textContent = `${Math.floor(r/60)}:${String(r%60).padStart(2,'0')}`;
+  }, 1000);
+}
+
+// ── Start ─────────────────────────────────────────────────
+function startBodyScan() {
+  unlockAudio();
+
+  // iOS: must call speak() inside the tap gesture to unlock TTS
+  window.speechSynthesis.cancel();
+  const primer = new SpeechSynthesisUtterance('\u200B');
+  primer.volume = 0;
+  const v = getBestVoice();
+  if (v) primer.voice = v;
+  window.speechSynthesis.speak(primer);
 
   bsRunning   = true;
   bsStartTime = Date.now();
@@ -1241,70 +1281,27 @@ async function startBodyScan() {
   document.getElementById('ec-progress-wrap').style.display = 'flex';
   requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('faded-in')));
 
-  // Total duration = sum of all audio durations + pauseAfters
-  const totalMs = bsAudioBuffers.reduce((s, b) => s + b.buffer.duration * 1000 + b.pauseAfter, 0);
-  startProgressBar(totalMs);
+  startProgressBar(bsDuration * 60 * 1000);
+  startKeepalive();
 
   softBell(280, 3.5);
-  const t = setTimeout(() => playLineSequence(0), 2000);
+  const t = setTimeout(() => runScript(buildScript(bsDuration), 0), 2500);
   bsTimers.push(t);
 }
 
-// ── Play decoded buffers sequentially ────────────────────
-function playLineSequence(index) {
-  if (!bsRunning || index >= bsAudioBuffers.length) {
-    if (bsRunning) finishBodyScan();
-    return;
-  }
-
-  const { buffer, pauseAfter } = bsAudioBuffers[index];
-  const ac  = getAC();
-
-  // Route voice through a gain node that sits above masterGain
-  // so sleep sounds and voice are independently controlled
-  const voiceGain = ac.createGain();
-  voiceGain.gain.value = 1.0;
-  voiceGain.connect(ac.destination);
-
-  const src = ac.createBufferSource();
-  src.buffer = buffer;
-  src.connect(voiceGain);
-
-  bsCurrentSource = src;
-
-  src.onended = () => {
-    if (!bsRunning) return;
-    const t = setTimeout(() => playLineSequence(index + 1), pauseAfter);
-    bsTimers.push(t);
-  };
-
-  src.start();
-}
-
-// ── Progress bar ──────────────────────────────────────────
-function startProgressBar(totalMs) {
-  const bar    = document.getElementById('ec-progress-bar');
-  const timeEl = document.getElementById('ec-time-left');
-  bsProgressIv = setInterval(() => {
-    const elapsed = Date.now() - bsStartTime;
-    bar.style.width = Math.min((elapsed / totalMs) * 100, 100) + '%';
-    const remSec = Math.max(0, Math.round((totalMs - elapsed) / 1000));
-    const m = Math.floor(remSec / 60), s = remSec % 60;
-    timeEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
-  }, 1000);
-}
-
+// ── Finish / Stop ─────────────────────────────────────────
 function finishBodyScan() {
   bsRunning = false;
+  stopKeepalive();
   clearInterval(bsProgressIv);
   bsTimers.forEach(clearTimeout); bsTimers = [];
   softBell(220, 4.5);
   setTimeout(() => softBell(264, 4), 2200);
-  const overlay = document.getElementById('eyes-closed-overlay');
+  const ov = document.getElementById('eyes-closed-overlay');
   setTimeout(() => {
-    overlay.classList.remove('faded-in');
+    ov.classList.remove('faded-in');
     setTimeout(() => {
-      overlay.style.display = 'none';
+      ov.style.display = 'none';
       document.getElementById('ec-progress-wrap').style.display = 'none';
       document.getElementById('ec-progress-bar').style.width = '0%';
       document.getElementById('ec-phase-hint').textContent = '';
@@ -1314,14 +1311,15 @@ function finishBodyScan() {
 
 function stopBodyScan() {
   bsRunning = false;
+  stopKeepalive();
+  window.speechSynthesis.cancel();
   clearInterval(bsProgressIv);
   bsTimers.forEach(clearTimeout); bsTimers = [];
   try { bsCurrentSource && bsCurrentSource.stop(); } catch(e) {}
-  bsCurrentSource = null;
-  const overlay = document.getElementById('eyes-closed-overlay');
-  overlay.classList.remove('faded-in');
+  const ov = document.getElementById('eyes-closed-overlay');
+  ov.classList.remove('faded-in');
   setTimeout(() => {
-    overlay.style.display = 'none';
+    ov.style.display = 'none';
     document.getElementById('ec-progress-wrap').style.display = 'none';
     document.getElementById('ec-progress-bar').style.width = '0%';
     document.getElementById('ec-phase-hint').textContent = '';
