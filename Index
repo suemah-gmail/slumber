@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0a1a">
+<title>Slumber — Sleep Well</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --void: #06040f;
+  --night: #0d0a1a;
+  --dusk: #1a1429;
+  --twilight: #251d3a;
+  --rose: #c17c74;
+  --rose-dim: rgba(193,124,116,0.15);
+  --sienna: #e8956d;
+  --sienna-dim: rgba(232,149,109,0.12);
+  --lavender: #9b8ec4;
+  --lav-dim: rgba(155,142,196,0.15);
+  --star: rgba(255,248,235,0.92);
+  --cream: rgba(255,248,235,0.82);
+  --cream-dim: rgba(255,248,235,0.45);
+  --cream-faint: rgba(255,248,235,0.12);
+}
+
+html, body {
+  height: 100%; background: var(--void);
+  color: var(--cream);
+  font-family: 'DM Serif Display', Georgia, serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  overflow: hidden;
+}
+
+#sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+#dim-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,0); pointer-events: none;
+  transition: background 1.5s ease;
+}
+#dim-overlay.dimmed { background: rgba(0,0,0,0.75); pointer-events: all; }
+
+/* ══════════════════════════════════════
+   SCREENS  (shared)
+══════════════════════════════════════ */
+.screen {
+  position: fixed; inset: 0; z-index: 10;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.9s ease;
+  display: flex; flex-direction: column;
+  align-items: center; overflow-y: auto;
+}
+.screen.active { opacity: 1; pointer-events: all; }
+.screen::-webkit-scrollbar { display: none; }
+.screen { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ══════════════════════════════════════
+   HOME — MOBILE FIRST
+══════════════════════════════════════ */
+#home { justify-content: flex-start; padding-bottom: 48px; }
+
+/* Sky header */
+.sky-header {
+  width: 100%; min-height: 260px;
+  position: relative; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  padding-bottom: 28px;
+}
+.moon {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%,
+    #fff8dc 0%, #f0dcb4 40%, #d2b98c 70%, rgba(180,150,110,.9) 100%);
+  box-shadow: 0 0 30px rgba(255,240,180,.5),0 0 70px rgba(255,220,130,.2),
+              0 0 120px rgba(255,200,100,.1),inset -8px -6px 20px rgba(150,110,60,.4);
+  position: absolute; top: 36px;
+  animation: moonGlow 6s ease-in-out infinite;
+}
+@keyframes moonGlow {
+  0%,100% { box-shadow:0 0 30px rgba(255,240,180,.5),0 0 70px rgba(255,220,130,.2),0 0 120px rgba(255,200,100,.1),inset -8px -6px 20px rgba(150,110,60,.4); }
+  50%      { box-shadow:0 0 50px rgba(255,240,180,.65),0 0 90px rgba(255,220,130,.3),0 0 160px rgba(255,200,100,.15),inset -8px -6px 20px rgba(150,110,60,.4); }
+}
+.horizon-glow {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 110px;
+  background: linear-gradient(to top,rgba(232,149,109,.12),rgba(193,124,116,.05),transparent);
+}
+.home-title {
+  font-family: 'Playfair Display', serif; font-weight: 400;
+  font-size: clamp(2.4rem,8vw,3.8rem);
+  letter-spacing: .07em; color: var(--star);
+  text-shadow: 0 0 40px rgba(255,240,180,.4);
+  position: relative; z-index: 2;
+}
+.home-sub {
+  font-size: .82rem; font-style: italic;
+  color: var(--cream-dim); letter-spacing: .14em; margin-top: 4px;
+  position: relative; z-index: 2;
+}
+
+/* Home body grid */
+.home-body {
+  width: 100%; max-width: 480px;
+  padding: 0 20px; display: flex; flex-direction: column; gap: 14px;
+}
+
+/* ── DESKTOP OVERRIDES (≥1100px — keeps iPad Mini in mobile layout) ── */
+@media (min-width: 1100px) {
+  #home { padding-bottom: 0; overflow: hidden; }
+
+  /* Narrower, centred sky bar */
+  .sky-header {
+    min-height: 200px;
+    max-height: 200px;
+    width: 100%;
+  }
+  .moon { width: 64px; height: 64px; top: 28px; }
+
+  /* Two-column layout below the header */
+  .home-body {
+    max-width: 1100px;
+    width: 100%;
+    padding: 0 40px 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    column-gap: 20px;
+    row-gap: 16px;
+    /* Sections slot into grid areas */
+  }
+
+  /* Assign grid areas — sounds+timer left, breathe+bodyscan right, tip full width */
+  .home-body > div:nth-child(1) { grid-column: 1; grid-row: 1; } /* sounds */
+  .home-body > div:nth-child(2) { grid-column: 1; grid-row: 2; } /* timer */
+  .home-body > div:nth-child(3) { grid-column: 2; grid-row: 1; } /* breathe */
+  .home-body > div:nth-child(4) { grid-column: 2; grid-row: 2; } /* body scan */
+  .home-body > div:nth-child(5) { grid-column: 1 / -1; grid-row: 3; } /* tip */
+
+  /* Larger sound tiles on desktop */
+  .sounds-grid { grid-template-columns: repeat(5,1fr); gap: 10px; }
+  .snd-tile { padding: 16px 6px; font-size: 1.7rem; }
+
+  /* Cards feel more hover-interactive on desktop */
+  .card:hover { background: rgba(155,142,196,.08); border-color: rgba(155,142,196,.22); transform: translateY(-1px); }
+  .snd-tile:hover { background: rgba(155,142,196,.1); border-color: rgba(155,142,196,.25); }
+  .chip:hover { background: var(--rose-dim); border-color: rgba(193,124,116,.3); color: var(--rose); }
+}
+
+/* Section label */
+.section-label {
+  font-size: .67rem; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--cream-faint); margin-bottom: 5px; margin-left: 2px;
+}
+
+/* Glass cards */
+.card {
+  background: rgba(255,248,235,.04);
+  border: 1px solid rgba(255,248,235,.08);
+  border-radius: 20px; padding: 18px 20px;
+  cursor: pointer;
+  transition: background .3s, border-color .3s, transform .15s;
+  display: flex; align-items: center; gap: 16px;
+}
+.card:active { transform: scale(.97); background: rgba(155,142,196,.08); border-color: rgba(155,142,196,.2); }
+.card-icon {
+  width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+  background: rgba(155,142,196,.1); border: 1px solid rgba(155,142,196,.2);
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+}
+.card-title { font-size: 1rem; letter-spacing: .04em; }
+.card-desc { font-size: .78rem; color: var(--cream-dim); font-style: italic; margin-top: 3px; }
+
+/* Sounds strip */
+.sounds-strip {
+  background: rgba(255,248,235,.04);
+  border: 1px solid rgba(255,248,235,.08);
+  border-radius: 20px; padding: 18px 20px;
+}
+.sounds-grid {
+  display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-top: 12px;
+}
+.snd-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 12px 4px; border-radius: 14px;
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+  cursor: pointer; transition: all .25s; font-size: 1.5rem;
+  -webkit-tap-highlight-color: transparent;
+}
+.snd-tile span { font-size: .62rem; letter-spacing: .06em; color: var(--cream-dim); }
+.snd-tile.playing { background: rgba(155,142,196,.15); border-color: rgba(155,142,196,.35); }
+.snd-tile.playing span { color: var(--lavender); }
+.snd-tile:active { transform: scale(.94); }
+
+/* Volume */
+.vol-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.vol-icon { font-size: 1rem; color: var(--cream-dim); }
+input[type=range] {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 3px; border-radius: 2px; background: rgba(255,255,255,.15); outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--lavender); box-shadow: 0 0 8px rgba(155,142,196,.5); cursor: pointer;
+}
+
+/* Sleep timer */
+.timer-inline {
+  background: rgba(255,248,235,.04);
+  border: 1px solid rgba(255,248,235,.08);
+  border-radius: 20px; padding: 18px 20px;
+}
+.timer-chips { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.chip {
+  padding: 8px 16px; border-radius: 24px;
+  border: 1px solid rgba(255,255,255,.1); background: transparent;
+  color: var(--cream-dim); font-family: 'DM Serif Display', serif;
+  font-size: .9rem; cursor: pointer; transition: all .3s;
+}
+.chip.active { background: var(--rose-dim); border-color: rgba(193,124,116,.4); color: var(--rose); }
+.chip.off { color: rgba(255,255,255,.22); font-style: italic; }
+.chip:active { transform: scale(.95); }
+.timer-status { margin-top: 12px; font-size: .82rem; font-style: italic; color: var(--cream-dim); min-height: 1.2em; }
+
+/* Tip */
+.tip-card {
+  background: rgba(193,124,116,.07);
+  border: 1px solid rgba(193,124,116,.15);
+  border-radius: 16px; padding: 16px 18px;
+  font-size: .85rem; font-style: italic; color: var(--cream-dim); line-height: 1.6;
+}
+.tip-card strong {
+  color: var(--rose); font-style: normal; font-size: .7rem;
+  letter-spacing: .1em; text-transform: uppercase; display: block; margin-bottom: 6px;
+}
+
+/* ══════════════════════════════════════
+   SUB-SCREENS  (shared mobile + desktop)
+══════════════════════════════════════ */
+.screen-nav {
+  position: absolute; top: 18px; left: 18px;
+  display: flex; align-items: center; gap: 10px; z-index: 20;
+}
+.nav-back {
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04);
+  color: var(--cream-dim); font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .3s;
+}
+.nav-back:hover { background: rgba(255,255,255,.09); }
+.nav-back:active { background: rgba(255,255,255,.12); }
+.screen-title {
+  font-family: 'Playfair Display', serif; font-weight: 400; font-style: italic;
+  font-size: 1.5rem; letter-spacing: .06em; color: var(--cream-dim);
+}
+
+/* ══════════════════════════════════════
+   BREATHE SCREEN
+══════════════════════════════════════ */
+#breathe-screen {
+  justify-content: flex-start; align-items: center;
+  padding-top: 70px; padding-bottom: 48px; position: relative;
+}
+
+@media (min-width: 1100px) {
+  #breathe-screen { padding-top: 90px; }
+  #breathe-screen > * { max-width: 520px; width: 100%; }
+  .sleep-orb-wrap { margin: 28px auto; }
+}
+
+.pattern-row { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; justify-content: center; }
+.pat-btn {
+  padding: 8px 18px; border-radius: 24px;
+  border: 1px solid rgba(255,255,255,.1); background: transparent;
+  color: var(--cream-dim); font-family: 'DM Serif Display', serif;
+  font-size: .88rem; cursor: pointer; transition: all .3s;
+}
+.pat-btn.active { background: var(--lav-dim); border-color: rgba(155,142,196,.4); color: var(--lavender); }
+.pat-btn:hover { background: rgba(155,142,196,.07); }
+.pat-btn:active { transform: scale(.96); }
+
+.sleep-orb-wrap {
+  position: relative; width: 240px; height: 240px;
+  display: flex; align-items: center; justify-content: center; margin: 16px 0;
+}
+.sleep-ring {
+  position: absolute; border-radius: 50%;
+  border: 1px solid rgba(155,142,196,.12);
+}
+.sleep-ring:nth-child(1) { width: 240px; height: 240px; animation: sleepRing 7s ease-in-out infinite; }
+.sleep-ring:nth-child(2) { width: 210px; height: 210px; animation: sleepRing 7s ease-in-out infinite .4s; }
+@keyframes sleepRing {
+  0%,100% { opacity: .3; transform: scale(1); }
+  50% { opacity: .1; transform: scale(1.04); }
+}
+#sleep-orb {
+  width: 170px; height: 170px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 35%,rgba(155,142,196,.55) 0%,rgba(155,142,196,.18) 45%,transparent 70%),
+    radial-gradient(circle at 65% 68%,rgba(193,124,116,.2) 0%,transparent 50%),
+    var(--dusk);
+  box-shadow: 0 0 60px rgba(155,142,196,.25),inset 0 0 30px rgba(155,142,196,.1);
+  border: 1px solid rgba(155,142,196,.25);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; transition: transform .15s linear; z-index: 2;
+}
+#sleep-orb-phase { font-family:'Playfair Display',serif; font-style:italic; font-size:1.1rem; color:var(--lavender); letter-spacing:.05em; }
+#sleep-orb-count { font-size:1.8rem; color:var(--cream); font-weight:300; line-height:1; }
+#sleep-orb-sec { font-size:.7rem; color:var(--cream-dim); letter-spacing:.1em; }
+
+#breath-guide-text { font-size:.9rem; font-style:italic; color:var(--cream-dim); letter-spacing:.1em; margin-bottom:6px; height:1.4em; transition:opacity .5s; text-align:center; }
+.breath-cycles { font-size:.76rem; color:var(--cream-faint); letter-spacing:.12em; margin-bottom:28px; }
+
+
+
+/* ══════════════════════════════════════
+   SHARED BUTTONS
+══════════════════════════════════════ */
+.btn-primary {
+  padding:15px 40px; border-radius:50px; border:none;
+  background:linear-gradient(135deg,rgba(155,142,196,.75),rgba(155,142,196,.45));
+  color:var(--night); font-family:'DM Serif Display',serif;
+  font-size:1rem; letter-spacing:.1em; cursor:pointer;
+  box-shadow:0 4px 30px rgba(155,142,196,.25); transition:all .3s;
+}
+.btn-primary:hover { box-shadow:0 6px 36px rgba(155,142,196,.4); transform:translateY(-1px); }
+.btn-primary:active { transform:scale(.97); box-shadow:0 2px 15px rgba(155,142,196,.15); }
+.btn-secondary {
+  padding:14px 28px; border-radius:50px;
+  border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.04);
+  color:var(--cream-dim); font-family:'DM Serif Display',serif;
+  font-size:.9rem; letter-spacing:.08em; cursor:pointer; transition:all .3s;
+}
+.btn-secondary:hover { background:rgba(255,255,255,.08); }
+.btn-secondary:active { background:rgba(255,255,255,.1); }
+.btn-row { display:flex; gap:12px; align-items:center; justify-content:center; width:100%; max-width:360px; }
+
+
+
+/* ══════════════════════════════════════
+   DIM BUTTON
+══════════════════════════════════════ */
+.dim-btn {
+  position:fixed; bottom:24px; right:20px; z-index:60;
+  width:48px; height:48px; border-radius:50%;
+  border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05);
+  color:var(--cream-dim); font-size:1.15rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  backdrop-filter:blur(8px); transition:all .3s;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);
+}
+.dim-btn:hover { background:rgba(255,255,255,.1); transform:scale(1.05); }
+.dim-btn:active { transform:scale(.93); }
+
+/* ══════════════════════════════════════
+   CLOSE EYES BUTTON
+══════════════════════════════════════ */
+.close-eyes-btn {
+  width: 100%;
+  padding: 20px 28px;
+  border-radius: 22px;
+  border: 1px solid rgba(155,142,196,0.25);
+  background: linear-gradient(135deg, rgba(155,142,196,0.14), rgba(193,124,116,0.08));
+  color: var(--star);
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  font-style: italic;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  transition: all 0.35s;
+  box-shadow: 0 0 30px rgba(155,142,196,0.1), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.close-eyes-btn:hover {
+  background: linear-gradient(135deg, rgba(155,142,196,0.22), rgba(193,124,116,0.13));
+  border-color: rgba(155,142,196,0.4);
+  box-shadow: 0 0 50px rgba(155,142,196,0.18);
+}
+.close-eyes-btn:active { transform: scale(0.98); }
+.close-eyes-icon {
+  font-size: 1.5rem;
+  animation: eyeBlink 5s ease-in-out infinite;
+}
+@keyframes eyeBlink {
+  0%,90%,100% { opacity: 1; transform: scaleY(1); }
+  95% { opacity: 0.3; transform: scaleY(0.1); }
+}
+
+/* ══════════════════════════════════════
+   CLOSE EYES OVERLAY  (full-screen darkness)
+══════════════════════════════════════ */
+#eyes-closed-overlay {
+  position: fixed; inset: 0; z-index: 80;
+  background: #000;
+  display: none;
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0;
+  cursor: pointer;
+  /* fade in */
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+#eyes-closed-overlay.visible {
+  display: flex;
+}
+#eyes-closed-overlay.faded-in {
+  opacity: 1;
+}
+/* Very subtle phase hint — shows current spoken line faintly */
+#ec-phase-hint {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: clamp(0.85rem, 2.5vw, 1.15rem);
+  line-height: 1.7;
+  letter-spacing: 0.04em;
+  color: rgba(155,142,196,0.22);
+  max-width: min(480px, 82vw);
+  text-align: center;
+  padding: 0 28px;
+  transition: color 2s ease, opacity 1.5s ease;
+  user-select: none;
+}
+/* Tiny stop hint at very bottom */
+#ec-stop-hint {
+  position: absolute;
+  bottom: 32px;
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.07);
+  transition: color 0.5s;
+  user-select: none;
+}
+#eyes-closed-overlay:active #ec-stop-hint {
+  color: rgba(255,255,255,0.25);
+}
+
+/* Staggered fade-in for home body sections */
+.home-body > div {
+  opacity:0; transform:translateY(14px);
+  animation:fadeUp .6s ease forwards;
+}
+.home-body > div:nth-child(1){animation-delay:.08s;}
+.home-body > div:nth-child(2){animation-delay:.18s;}
+.home-body > div:nth-child(3){animation-delay:.1s;}
+.home-body > div:nth-child(4){animation-delay:.2s;}
+.home-body > div:nth-child(5){animation-delay:.3s;}
+@keyframes fadeUp { to{opacity:1;transform:translateY(0);} }
+</style>
+</head>
+<body>
+
+<canvas id="sky"></canvas>
+<div id="dim-overlay" onclick="if(dimmed)toggleDim()"></div>
+<button class="dim-btn" id="dim-btn" title="Dim screen" onclick="toggleDim()">🌙</button>
+
+<!-- ════════════ BODY SCAN OVERLAY ════════════ -->
+<div id="eyes-closed-overlay" onclick="handleOverlayTap()">
+  <div id="ec-phase-hint"></div>
+  <div id="ec-progress-wrap" style="display:none;flex-direction:column;align-items:center;gap:10px;margin-top:8px;">
+    <div id="ec-progress-bar-bg" style="width:180px;height:2px;background:rgba(255,255,255,0.07);border-radius:2px;">
+      <div id="ec-progress-bar" style="height:2px;width:0%;background:rgba(155,142,196,0.35);border-radius:2px;transition:width 1s linear;"></div>
+    </div>
+    <div id="ec-time-left" style="font-size:0.62rem;letter-spacing:0.16em;color:rgba(255,255,255,0.1);font-family:'DM Serif Display',serif;"></div>
+  </div>
+  <div id="ec-stop-hint">tap anywhere to stop</div>
+</div>
+
+<!-- ════════════ HOME ════════════ -->
+<div class="screen active" id="home">
+  <div class="sky-header">
+    <div class="moon"></div>
+    <div class="horizon-glow"></div>
+    <div class="home-title">Slumber</div>
+    <div class="home-sub">drift gently into the night</div>
+  </div>
+
+  <div class="home-body">
+
+    <!-- 1. Sounds -->
+    <div>
+      <div class="section-label">Sleep Sounds</div>
+      <div class="sounds-strip">
+        <div class="sounds-grid">
+          <div class="snd-tile" id="tile-rain"  onclick="toggleSound('rain')">🌧<span>Rain</span></div>
+          <div class="snd-tile" id="tile-brown" onclick="toggleSound('brown')">🌊<span>Ocean</span></div>
+          <div class="snd-tile" id="tile-white" onclick="toggleSound('white')">🌬<span>Wind</span></div>
+          <div class="snd-tile" id="tile-fire"  onclick="toggleSound('fire')">🔥<span>Fire</span></div>
+          <div class="snd-tile" id="tile-creek" onclick="toggleSound('creek')">🫧<span>Creek</span></div>
+        </div>
+        <div class="vol-row">
+          <span class="vol-icon">🔈</span>
+          <input type="range" id="vol-slider" min="0" max="100" value="55" oninput="setVolume(this.value)">
+          <span class="vol-icon">🔊</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Sleep timer -->
+    <div>
+      <div class="section-label">Sound Sleep Timer</div>
+      <div class="timer-inline">
+        <div class="timer-chips">
+          <button class="chip off active" id="chip-off" onclick="setSleepTimer(0,this)">Off</button>
+          <button class="chip" id="chip-15" onclick="setSleepTimer(15,this)">15 min</button>
+          <button class="chip" id="chip-30" onclick="setSleepTimer(30,this)">30 min</button>
+          <button class="chip" id="chip-45" onclick="setSleepTimer(45,this)">45 min</button>
+          <button class="chip" id="chip-60" onclick="setSleepTimer(60,this)">60 min</button>
+        </div>
+        <div class="timer-status" id="sleep-timer-status"></div>
+      </div>
+    </div>
+
+    <!-- 3. Wind-down breathing -->
+    <div>
+      <div class="section-label">Wind-Down Breathing</div>
+      <div class="card" onclick="showScreen('breathe-screen')">
+        <div class="card-icon">💨</div>
+        <div class="card-text">
+          <div class="card-title">Sleep Breathing</div>
+          <div class="card-desc">Slow patterns to quiet your mind</div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 4. Body Scan -->
+    <div>
+      <div class="section-label">Guided Body Scan</div>
+      <div class="sounds-strip" style="padding:18px 20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="font-size:0.92rem;letter-spacing:0.03em;color:var(--cream);">Duration</div>
+          <div style="font-size:0.72rem;font-style:italic;color:var(--cream-dim);">Aria · ElevenLabs</div>
+        </div>
+        <div class="timer-chips" style="margin-top:0;margin-bottom:16px;">
+          <button class="chip active" id="bs-30" onclick="selectBsDur(30,this)">30 min</button>
+          <button class="chip" id="bs-45" onclick="selectBsDur(45,this)">45 min</button>
+          <button class="chip" id="bs-60" onclick="selectBsDur(60,this)">60 min</button>
+          <button class="chip" id="bs-90" onclick="selectBsDur(90,this)">90 min</button>
+        </div>
+        <button class="close-eyes-btn" id="bs-begin-btn" onclick="startBodyScan()">
+          <span class="close-eyes-icon">🌙</span>
+          Begin Body Scan
+        </button>
+        <div id="bs-loading-status" style="margin-top:12px;font-size:0.78rem;font-style:italic;color:var(--cream-dim);text-align:center;min-height:1.2em;"></div>
+      </div>
+    </div>
+
+    <!-- 6. Tip -->
+    <div>
+      <div class="tip-card">
+        <strong>Tonight's Tip</strong>
+        <span id="tip-text"></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════ BREATHE ════════════ -->
+<div class="screen" id="breathe-screen">
+  <div class="screen-nav">
+    <button class="nav-back" onclick="showScreen('home')">←</button>
+    <div class="screen-title">Wind Down</div>
+  </div>
+
+  <div class="pattern-row" style="margin-top:16px;">
+    <button class="pat-btn active" onclick="setSleepPattern('slow',this)">4–6</button>
+    <button class="pat-btn" onclick="setSleepPattern('box',this)">Box</button>
+    <button class="pat-btn" onclick="setSleepPattern('478',this)">4–7–8</button>
+    <button class="pat-btn" onclick="setSleepPattern('deep',this)">Deep</button>
+  </div>
+
+  <div class="sleep-orb-wrap">
+    <div class="sleep-ring"></div>
+    <div class="sleep-ring"></div>
+    <div id="sleep-orb">
+      <div id="sleep-orb-phase">breathe</div>
+      <div id="sleep-orb-count">4</div>
+      <div id="sleep-orb-sec">seconds</div>
+    </div>
+  </div>
+
+  <div id="breath-guide-text">follow the orb…</div>
+  <div class="breath-cycles" id="breath-cycles">cycles: 0</div>
+
+  <div class="btn-row">
+    <button class="btn-secondary" id="sleep-breath-btn" onclick="toggleSleepBreathe()">Begin</button>
+  </div>
+</div>
+
+
+<script>
+// ══════════════════════════════════════════
+// STAR FIELD
+// ══════════════════════════════════════════
+const sky = document.getElementById('sky');
+const ctx = sky.getContext('2d');
+let W, H;
+
+function resizeSky() { W = sky.width = window.innerWidth; H = sky.height = window.innerHeight; }
+resizeSky();
+window.addEventListener('resize', resizeSky);
+
+const stars = Array.from({length: 220}, () => ({
+  x: Math.random(),
+  y: Math.random() * 0.65,
+  r: Math.random() * 1.4 + 0.2,
+  op: Math.random() * 0.55 + 0.12,
+  ts: Math.random() * 0.02 + 0.004,
+  to: Math.random() * Math.PI * 2,
+  col: Math.random() > 0.8 ? 'rgba(255,220,180,' : Math.random() > 0.55 ? 'rgba(200,210,255,' : 'rgba(255,248,235,',
+}));
+
+let shootingStar = null;
+function maybeShooting() {
+  if (!shootingStar && Math.random() < 0.004) {
+    shootingStar = {
+      x: Math.random() * W * 0.75, y: Math.random() * H * 0.3,
+      len: Math.random() * 90 + 50, speed: Math.random() * 7 + 4,
+      op: 1, angle: Math.PI / 4 + (Math.random() - 0.5) * 0.35
+    };
+  }
+}
+
+let t = 0;
+(function animSky() {
+  t += 0.01; ctx.clearRect(0, 0, W, H);
+  // BG
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#06040f'); bg.addColorStop(0.35, '#0d0a1a');
+  bg.addColorStop(0.72, '#120e22'); bg.addColorStop(1, '#1a1429');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  // Milky way
+  const mw = ctx.createLinearGradient(W*0.15, 0, W*0.85, H*0.7);
+  mw.addColorStop(0,'transparent'); mw.addColorStop(0.4,'rgba(155,142,196,0.04)');
+  mw.addColorStop(0.6,'rgba(155,142,196,0.025)'); mw.addColorStop(1,'transparent');
+  ctx.fillStyle = mw; ctx.fillRect(0, 0, W, H);
+  // Stars
+  stars.forEach(s => {
+    const tw = Math.sin(t * s.ts * 100 + s.to) * 0.3 + 0.7;
+    ctx.beginPath(); ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `${s.col}${(s.op*tw).toFixed(2)})`; ctx.fill();
+  });
+  // Shooting
+  maybeShooting();
+  if (shootingStar) {
+    const ss = shootingStar;
+    const dx = Math.cos(ss.angle)*ss.len, dy = Math.sin(ss.angle)*ss.len;
+    const g = ctx.createLinearGradient(ss.x,ss.y,ss.x-dx,ss.y-dy);
+    g.addColorStop(0,`rgba(255,248,235,${ss.op})`); g.addColorStop(1,'transparent');
+    ctx.beginPath(); ctx.moveTo(ss.x,ss.y); ctx.lineTo(ss.x-dx,ss.y-dy);
+    ctx.strokeStyle=g; ctx.lineWidth=1.5; ctx.stroke();
+    ss.x += Math.cos(ss.angle)*ss.speed; ss.y += Math.sin(ss.angle)*ss.speed;
+    ss.op -= 0.024;
+    if (ss.op <= 0 || ss.x > W+100 || ss.y > H+100) shootingStar = null;
+  }
+  requestAnimationFrame(animSky);
+})();
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// DIM
+// ══════════════════════════════════════════
+let dimmed = false;
+function toggleDim() {
+  dimmed = !dimmed;
+  document.getElementById('dim-overlay').classList.toggle('dimmed', dimmed);
+  const btn = document.getElementById('dim-btn');
+  btn.textContent = dimmed ? '☀️' : '🌙';
+  btn.title = dimmed ? 'Undim screen' : 'Dim screen';
+}
+
+// ══════════════════════════════════════════
+// AUDIO ENGINE  (iOS Safari safe)
+// ══════════════════════════════════════════
+
+let audioCtx = null;
+let masterGain = null;
+
+// getAC — always returns a running AudioContext
+function getAC() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new Ctx();
+  }
+  if (audioCtx.state !== 'running') audioCtx.resume();
+  return audioCtx;
+}
+
+function getMG() {
+  if (!masterGain) {
+    const ac = getAC();
+    masterGain = ac.createGain();
+    masterGain.gain.value = 0.7;
+    masterGain.connect(ac.destination);
+  }
+  return masterGain;
+}
+
+function setVolume(v) {
+  getMG().gain.setTargetAtTime(v / 100 * 0.7, getAC().currentTime, 0.1);
+}
+
+// iOS AUDIO UNLOCK
+// Safari requires AudioContext.resume() called from a direct user-gesture handler.
+// We do it on the very first touchstart/click, playing a silent buffer to fully unlock.
+let audioUnlocked = false;
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  const ac = getAC();
+  // Silent 1-sample buffer — the canonical iOS unlock trick
+  const buf = ac.createBuffer(1, 1, ac.sampleRate);
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  src.connect(ac.destination);
+  src.start(0);
+  ac.resume();
+}
+document.addEventListener('touchstart', unlockAudio, { passive: true, once: true });
+document.addEventListener('touchend',   unlockAudio, { passive: true, once: true });
+document.addEventListener('click',      unlockAudio, { once: true });
+
+// NOISE BUFFER — small (0.5s) to avoid blocking the main thread on iPad
+// Looped by BufferSource. Half-second is imperceptible as a loop.
+function makeNoiseBuffer(ac) {
+  const len = Math.floor(ac.sampleRate * 0.5);
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function noiseSource(ac) {
+  const src = ac.createBufferSource();
+  src.buffer = makeNoiseBuffer(ac);
+  src.loop = true;
+  return src;
+}
+
+const activeSounds = {};
+const FADE_IN  = 2.0;
+const FADE_OUT = 2.2;
+
+function createRain(ac, out) {
+  const src = noiseSource(ac);
+  const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2200;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass';  lp.frequency.value = 7000;
+  const lfo = ac.createOscillator(); lfo.frequency.value = 0.28;
+  const lfog = ac.createGain(); lfog.gain.value = 0.18;
+  const eg = ac.createGain(); eg.gain.value = 0.7;
+  lfo.connect(lfog); lfog.connect(eg.gain);
+  src.connect(hp); hp.connect(lp); lp.connect(eg); eg.connect(out);
+  src.start(); lfo.start();
+  return { stop() { try { src.stop(); lfo.stop(); } catch(e) {} } };
+}
+
+function createOcean(ac, out) {
+  const src = noiseSource(ac);
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
+  const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.1;
+  const lfog = ac.createGain(); lfog.gain.value = 0.4;
+  const eg = ac.createGain(); eg.gain.value = 0.65;
+  lfo.connect(lfog); lfog.connect(eg.gain);
+  src.connect(lp); lp.connect(eg); eg.connect(out);
+  src.start(); lfo.start();
+  return { stop() { try { src.stop(); lfo.stop(); } catch(e) {} } };
+}
+
+function createWind(ac, out) {
+  const src = noiseSource(ac);
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.6;
+  const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.07;
+  const lfog = ac.createGain(); lfog.gain.value = 0.32;
+  const eg = ac.createGain(); eg.gain.value = 0.5;
+  lfo.connect(lfog); lfog.connect(eg.gain);
+  src.connect(bp); bp.connect(eg); eg.connect(out);
+  src.start(); lfo.start();
+  return { stop() { try { src.stop(); lfo.stop(); } catch(e) {} } };
+}
+
+function createFire(ac, out) {
+  const src = noiseSource(ac);
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass';  lp.frequency.value = 900;
+  const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 120;
+  const lfo = ac.createOscillator(); lfo.frequency.value = 0.2;
+  const lfog = ac.createGain(); lfog.gain.value = 0.12;
+  const eg = ac.createGain(); eg.gain.value = 0.5;
+  lfo.connect(lfog); lfog.connect(eg.gain);
+  src.connect(hp); hp.connect(lp); lp.connect(eg); eg.connect(out);
+  src.start(); lfo.start();
+  return { stop() { try { src.stop(); lfo.stop(); } catch(e) {} } };
+}
+
+function createCreek(ac, out) {
+  const src = noiseSource(ac);
+  const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1000;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass';  lp.frequency.value = 4000;
+  const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.8;
+  const lfog = ac.createGain(); lfog.gain.value = 0.2;
+  const eg = ac.createGain(); eg.gain.value = 0.55;
+  lfo.connect(lfog); lfog.connect(eg.gain);
+  src.connect(hp); hp.connect(lp); lp.connect(eg); eg.connect(out);
+  src.start(); lfo.start();
+  return { stop() { try { src.stop(); lfo.stop(); } catch(e) {} } };
+}
+
+const soundFns = { rain: createRain, brown: createOcean, white: createWind, fire: createFire, creek: createCreek };
+
+function toggleSound(id) {
+  unlockAudio(); // ensure unlocked on every tap
+  const ac  = getAC();
+  const tile = document.getElementById('tile-' + id);
+
+  if (activeSounds[id]) {
+    const { node, gainNode } = activeSounds[id];
+    const now = ac.currentTime;
+    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+    gainNode.gain.linearRampToValueAtTime(0, now + FADE_OUT);
+    setTimeout(() => { try { node.stop(); } catch(e) {} }, (FADE_OUT + 0.15) * 1000);
+    delete activeSounds[id];
+    tile.classList.remove('playing');
+  } else {
+    const gainNode = ac.createGain();
+    gainNode.gain.setValueAtTime(0, ac.currentTime);
+    gainNode.gain.linearRampToValueAtTime(1, ac.currentTime + FADE_IN);
+    gainNode.connect(getMG());
+    const node = soundFns[id](ac, gainNode);
+    activeSounds[id] = { node, gainNode };
+    tile.classList.add('playing');
+  }
+}
+
+function stopAllSounds(fade) {
+  const ac = getAC();
+  Object.keys(activeSounds).forEach(id => {
+    const { node, gainNode } = activeSounds[id];
+    if (fade) {
+      const dur = FADE_OUT * 3;
+      gainNode.gain.setValueAtTime(gainNode.gain.value, ac.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0, ac.currentTime + dur);
+      setTimeout(() => { try { node.stop(); } catch(e) {} }, (dur + 0.15) * 1000);
+    } else {
+      try { node.stop(); } catch(e) {}
+    }
+    delete activeSounds[id];
+    document.getElementById('tile-' + id)?.classList.remove('playing');
+  });
+}
+
+// ══════════════════════════════════════════
+// SLEEP TIMER
+// ══════════════════════════════════════════
+let sleepTimerTO = null, sleepTimerEnd = null, sleepTickIv = null;
+function setSleepTimer(mins, el) {
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  clearTimeout(sleepTimerTO); clearInterval(sleepTickIv);
+  document.getElementById('sleep-timer-status').textContent = '';
+  if (!mins) return;
+  sleepTimerEnd = Date.now() + mins*60000;
+  const tick = () => {
+    const rem = sleepTimerEnd - Date.now();
+    if (rem <= 0) { clearInterval(sleepTickIv); return; }
+    const m=Math.floor(rem/60000), s=Math.floor((rem%60000)/1000);
+    document.getElementById('sleep-timer-status').textContent = `Sounds off in ${m}:${s.toString().padStart(2,'0')}`;
+  };
+  tick(); sleepTickIv = setInterval(tick, 1000);
+  sleepTimerTO = setTimeout(() => {
+    clearInterval(sleepTickIv); stopAllSounds(true);
+    document.getElementById('sleep-timer-status').textContent = 'Sweet dreams ✦';
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    document.getElementById('chip-off').classList.add('active');
+  }, mins*60000);
+}
+
+// ══════════════════════════════════════════
+// BREATHING
+// ══════════════════════════════════════════
+const PATTERNS = {
+  slow:  {phases:['Inhale','Exhale'],              durations:[4,6]},
+  box:   {phases:['Inhale','Hold','Exhale','Hold'],durations:[4,4,4,4]},
+  '478': {phases:['Inhale','Hold','Exhale'],       durations:[4,7,8]},
+  deep:  {phases:['Inhale','Hold','Exhale'],       durations:[5,3,7]},
+};
+let bp = PATTERNS.slow, bRunning=false, bPhase=0, bCycles=0, bTimer=null, bCiv=null, bCount=0;
+
+function setSleepPattern(key, el) {
+  document.querySelectorAll('.pat-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active');
+  bp = PATTERNS[key]; if(bRunning) stopSleepBreathe(); bPhase=0; bCycles=0;
+  document.getElementById('sleep-orb-phase').textContent='breathe';
+  document.getElementById('sleep-orb-count').textContent=bp.durations[0];
+  document.getElementById('breath-guide-text').textContent='follow the orb…';
+  document.getElementById('breath-cycles').textContent='cycles: 0';
+  document.getElementById('sleep-breath-btn').textContent='Begin';
+}
+function playBTone(phase) {
+  try {
+    unlockAudio();
+    const ac=getAC(), osc=ac.createOscillator(), g=ac.createGain();
+    osc.connect(g); g.connect(ac.destination); osc.type='sine';
+    if(phase==='Hold'){return;} osc.frequency.value=phase==='Inhale'?396:324;
+    g.gain.setValueAtTime(0,ac.currentTime); g.gain.linearRampToValueAtTime(0.08,ac.currentTime+0.1);
+    g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+0.6);
+    osc.start(ac.currentTime); osc.stop(ac.currentTime+0.7);
+  } catch(e){}
+}
+function animOrb(dir, dur) {
+  const orb=document.getElementById('sleep-orb');
+  const from=orb._sc||1, to=dir==='expand'?1.38:dir==='contract'?0.82:from;
+  const start=performance.now();
+  (function step(now){
+    const t2=Math.min((now-start)/(dur*1000),1), e=t2<0.5?2*t2*t2:-1+(4-2*t2)*t2;
+    const sc=from+(to-from)*e; orb._sc=sc; orb.style.transform=`scale(${sc})`;
+    const gl=dir==='expand'
+      ?`0 0 ${60+40*t2}px rgba(155,142,196,${0.25+0.2*t2}),inset 0 0 ${30+15*t2}px rgba(155,142,196,${0.1+0.08*t2})`
+      :`0 0 ${100-40*t2}px rgba(155,142,196,${0.45-0.2*t2}),inset 0 0 ${45-15*t2}px rgba(155,142,196,${0.18-0.08*t2})`;
+    orb.style.boxShadow=gl; if(t2<1) requestAnimationFrame(step);
+  })(performance.now());
+}
+function startBPhase() {
+  const phase=bp.phases[bPhase], dur=bp.durations[bPhase];
+  document.getElementById('sleep-orb-phase').textContent=phase;
+  document.getElementById('breath-guide-text').textContent=
+    phase==='Inhale'?'breathe in slowly…':phase==='Hold'?'hold gently…':'release…';
+  animOrb(phase==='Inhale'?'expand':phase==='Exhale'?'contract':'hold', dur);
+  playBTone(phase);
+  bCount=dur; document.getElementById('sleep-orb-count').textContent=bCount;
+  bCiv=setInterval(()=>{ bCount--; document.getElementById('sleep-orb-count').textContent=Math.max(0,bCount); },1000);
+  bTimer=setTimeout(()=>{
+    clearInterval(bCiv); bPhase++;
+    if(bPhase>=bp.phases.length){ bPhase=0; bCycles++; document.getElementById('breath-cycles').textContent=`cycles: ${bCycles}`; }
+    if(bRunning) startBPhase();
+  }, dur*1000);
+}
+function toggleSleepBreathe() {
+  if(!bRunning){ bRunning=true; bPhase=0; document.getElementById('sleep-breath-btn').textContent='Pause'; startBPhase(); }
+  else{ stopSleepBreathe(); document.getElementById('sleep-breath-btn').textContent='Resume'; }
+}
+function stopSleepBreathe() {
+  bRunning=false; clearTimeout(bTimer); clearInterval(bCiv);
+  const orb=document.getElementById('sleep-orb');
+  orb.style.transform='scale(1)'; orb._sc=1;
+}
+
+
+// ══════════════════════════════════════════
+// BODY SCAN — SCRIPT BUILDER
+// ══════════════════════════════════════════
+
+// ── Body scan script builder ──────────────────────────────
+// The script is built from reusable blocks that get assembled and
+// padded with silence-heavy "deepening" passages to fill the chosen
+// duration. pauseAfter values are in milliseconds.
+//
+// Approximate timing: each spoken line ~4-8s + pauseAfter.
+// The engine targets the chosen duration, inserting extra deepening
+// rounds until total estimated time meets the target.
+
+function buildScript(mins) {
+  const totalMs = mins * 60 * 1000;
+
+  const open = [
+    { text: "Find a comfortable position and gently close your eyes.", pauseAfter: 4000 },
+    { text: "Allow your body to settle completely into the surface beneath you.", pauseAfter: 4000 },
+    { text: "Take a slow, deep breath in through your nose.", pauseAfter: 2500 },
+    { text: "And breathe out… letting go of everything.", pauseAfter: 5000 },
+    { text: "Once more. A long, slow inhale.", pauseAfter: 2500 },
+    { text: "And a complete, releasing exhale.", pauseAfter: 6000 },
+    { text: "And one more time. Breathing in calm and stillness.", pauseAfter: 3000 },
+    { text: "Breathing out any tension from the day.", pauseAfter: 7000 },
+    { text: "We will move slowly through your entire body tonight. There is nowhere to go. Nothing to do. Only this.", pauseAfter: 8000 },
+  ];
+
+  const headAndFace = [
+    { text: "Bring your awareness gently to the very top of your head.", pauseAfter: 5000 },
+    { text: "Notice any sensation there. Warmth, tingling, or simply stillness.", pauseAfter: 6000 },
+    { text: "Let your scalp loosen and soften.", pauseAfter: 5500 },
+    { text: "Move your attention to your forehead. Smooth away any tension there.", pauseAfter: 5500 },
+    { text: "Your brows become soft and heavy.", pauseAfter: 5000 },
+    { text: "Your eyes rest gently behind closed lids. Let the muscles around them release completely.", pauseAfter: 6000 },
+    { text: "Your cheeks soften. Your nose. Your lips part slightly.", pauseAfter: 6000 },
+    { text: "Your jaw unclenches. Feel the space between your back teeth widen.", pauseAfter: 6500 },
+    { text: "Your tongue rests softly at the bottom of your mouth.", pauseAfter: 5500 },
+    { text: "All the muscles of your face are letting go now.", pauseAfter: 7000 },
+  ];
+
+  const neckAndShoulders = [
+    { text: "Feel the weight of your head on the pillow. Let it be fully, completely supported.", pauseAfter: 6000 },
+    { text: "Your neck softens. The muscles along the back of your neck lengthen.", pauseAfter: 6000 },
+    { text: "Your throat is open and relaxed.", pauseAfter: 5500 },
+    { text: "Now your shoulders. Let them drop away from your ears.", pauseAfter: 5500 },
+    { text: "Feel them sink down… and down… into the mattress.", pauseAfter: 7000 },
+    { text: "Any tension that was held in your shoulders simply flows away.", pauseAfter: 7000 },
+  ];
+
+  const armsAndHands = [
+    { text: "Your awareness moves down into your upper arms.", pauseAfter: 5000 },
+    { text: "They are heavy now. Completely relaxed.", pauseAfter: 5500 },
+    { text: "Your elbows. Your forearms. All heaviness now.", pauseAfter: 6000 },
+    { text: "Your wrists go limp.", pauseAfter: 4500 },
+    { text: "Your hands rest open and still.", pauseAfter: 5000 },
+    { text: "Your fingers uncurl one by one.", pauseAfter: 5000 },
+    { text: "Feel warmth spreading through your palms… into your fingertips.", pauseAfter: 7000 },
+    { text: "Your hands are completely at rest. Heavy, warm, still.", pauseAfter: 7000 },
+  ];
+
+  const chestAndBelly = [
+    { text: "Bring your attention to your chest.", pauseAfter: 4500 },
+    { text: "Notice how it rises… and falls… all on its own.", pauseAfter: 6000 },
+    { text: "You don't need to control your breathing. Your body knows exactly what to do.", pauseAfter: 7000 },
+    { text: "Feel your ribs expand gently on each inhale.", pauseAfter: 5500 },
+    { text: "And soften on each exhale.", pauseAfter: 6000 },
+    { text: "Your belly rises slowly as you breathe in.", pauseAfter: 5000 },
+    { text: "And falls completely as you breathe out.", pauseAfter: 6500 },
+    { text: "Your whole torso is relaxed now. Each breath carries you deeper.", pauseAfter: 8000 },
+  ];
+
+  const backAndHips = [
+    { text: "Your lower back sinks a little deeper into the bed.", pauseAfter: 6000 },
+    { text: "Feel the support beneath you. The bed holds you completely.", pauseAfter: 6500 },
+    { text: "Any tightness in your back softens now.", pauseAfter: 6000 },
+    { text: "Your hips release. Your pelvis grows heavy.", pauseAfter: 6000 },
+    { text: "All the muscles deep in your hips simply let go.", pauseAfter: 7000 },
+    { text: "You are sinking deeper into rest.", pauseAfter: 8000 },
+  ];
+
+  const legsAndFeet = [
+    { text: "Your awareness flows down into your thighs.", pauseAfter: 5000 },
+    { text: "They are heavy. Deeply relaxed.", pauseAfter: 5500 },
+    { text: "Your knees soften.", pauseAfter: 5000 },
+    { text: "Your calves. Let go of any last holding there.", pauseAfter: 5500 },
+    { text: "Your ankles go limp.", pauseAfter: 4500 },
+    { text: "Your feet. The soles of your feet. Your heels resting heavy.", pauseAfter: 6000 },
+    { text: "Your toes release one by one.", pauseAfter: 5500 },
+    { text: "Warmth spreads through the soles of your feet.", pauseAfter: 7000 },
+    { text: "Your entire body is at rest now. From the crown of your head to the tips of your toes.", pauseAfter: 8000 },
+  ];
+
+  // Deepening passages — inserted between rounds to fill time
+  const deepening = [
+    [
+      { text: "Notice how heavy your body feels. Like it is sinking gently into the earth.", pauseAfter: 8000 },
+      { text: "With each breath, you go a little deeper.", pauseAfter: 7000 },
+      { text: "There is nothing to think about. Nothing to plan. Nothing to remember.", pauseAfter: 9000 },
+      { text: "Just this breath. Just this moment.", pauseAfter: 10000 },
+    ],
+    [
+      { text: "Your mind grows quieter now.", pauseAfter: 7000 },
+      { text: "Thoughts may come. Simply notice them, and let them drift away like clouds.", pauseAfter: 9000 },
+      { text: "Returning always to the breath. Returning always to the body.", pauseAfter: 9000 },
+      { text: "You are safe. You are warm. You are held.", pauseAfter: 10000 },
+    ],
+    [
+      { text: "Feel the weight of your body against the bed.", pauseAfter: 7000 },
+      { text: "Every part of you is supported. You can release completely.", pauseAfter: 8000 },
+      { text: "Breathe in… slowly.", pauseAfter: 3000 },
+      { text: "And out… letting go.", pauseAfter: 10000 },
+      { text: "Deeper and deeper into stillness.", pauseAfter: 11000 },
+    ],
+    [
+      { text: "The sounds around you become part of your rest now.", pauseAfter: 8000 },
+      { text: "Nothing can disturb you. You are drifting inward.", pauseAfter: 9000 },
+      { text: "Your body knows how to sleep. Trust it.", pauseAfter: 10000 },
+      { text: "Let go… a little more.", pauseAfter: 12000 },
+    ],
+    [
+      { text: "Scan gently from your head to your feet once more.", pauseAfter: 6000 },
+      { text: "Noticing any place still holding the faintest tension.", pauseAfter: 7000 },
+      { text: "Breathe into that place.", pauseAfter: 4000 },
+      { text: "And on the exhale, let it soften and dissolve.", pauseAfter: 10000 },
+      { text: "Your whole body melting into the bed.", pauseAfter: 11000 },
+    ],
+    [
+      { text: "There is no past right now. No future.", pauseAfter: 7000 },
+      { text: "Only the gentle rise and fall of your chest.", pauseAfter: 7000 },
+      { text: "Only the warmth of the bed beneath you.", pauseAfter: 8000 },
+      { text: "Only peace.", pauseAfter: 13000 },
+    ],
+  ];
+
+  const close = [
+    { text: "You have arrived at the edge of sleep.", pauseAfter: 8000 },
+    { text: "Your body is completely at rest. Your mind is still.", pauseAfter: 8000 },
+    { text: "You are safe. You are warm. You are exactly where you need to be.", pauseAfter: 9000 },
+    { text: "Let sleep come to you now. Naturally. Effortlessly.", pauseAfter: 10000 },
+    { text: "Sleep now.", pauseAfter: 0 },
+  ];
+
+  // Estimate ms for a block
+  function estimateMs(lines) {
+    // Rough: 150 words/min at rate 0.78 = ~115 words/min, avg 8 words/line = ~4s speech + pauseAfter
+    return lines.reduce((sum, l) => sum + (l.text.split(' ').length / 1.9 * 1000) + l.pauseAfter, 0);
+  }
+
+  const bodyRound = [...headAndFace, ...neckAndShoulders, ...armsAndHands, ...chestAndBelly, ...backAndHips, ...legsAndFeet];
+
+  // Build script: open + bodyRound + deepening loops until we hit target time
+  let script = [...open, ...bodyRound];
+  let deepIdx = 0;
+  const targetMs = totalMs - estimateMs(close) - 2000; // leave room for close
+
+  while (estimateMs(script) < targetMs) {
+    // Add a deepening passage
+    script.push(...deepening[deepIdx % deepening.length]);
+    deepIdx++;
+
+    // After every 2 deepening blocks, do a lighter partial body re-scan
+    if (deepIdx % 2 === 0 && estimateMs(script) < targetMs - estimateMs(bodyRound) * 0.6) {
+      // Shortened re-scan: just head→shoulders→chest→feet
+      script.push(
+        { text: "Let us drift through the body one more time, even more slowly.", pauseAfter: 7000 },
+        ...headAndFace.slice(0, 4),
+        ...neckAndShoulders.slice(0, 3),
+        ...chestAndBelly.slice(2, 5),
+        ...legsAndFeet.slice(4),
+      );
+    }
+
+    // Safety: don't overshoot by more than one deepening block
+    if (deepIdx > 20) break;
+  }
+
+  return [...script, ...close];
+}
+
+// ── Soft bell ────────────────────────────────────────────
+function softBell(freq, duration) {
+  freq = freq || 280; duration = duration || 3.5;
+  unlockAudio();
+  try {
+    const ac = getAC();
+    [1, 2.76, 5.4].forEach((h, i) => {
+      const osc = ac.createOscillator(), g = ac.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq * h;
+      const vol = i === 0 ? 0.18 : 0.04 / i;
+      g.gain.setValueAtTime(0, ac.currentTime);
+      g.gain.linearRampToValueAtTime(vol, ac.currentTime + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      osc.connect(g); g.connect(ac.destination); // direct — not through masterGain
+      osc.start(ac.currentTime);
+      osc.stop(ac.currentTime + duration + 0.1);
+    });
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════
+// ELEVENLABS BODY SCAN ENGINE
+// ══════════════════════════════════════════
+// Audio is fetched via /api/tts — a Netlify serverless function
+// that holds the API key securely server-side.
+
+const EL_VOICE_ID  = '9BWtsMINqrJLrRacOk9x'; // Aria
+
+// Voice settings — slow, soft, meditation style
+const EL_VOICE_SETTINGS = {
+  stability: 0.75,
+  similarity_boost: 0.85,
+  style: 0.12,
+  use_speaker_boost: false
+};
+
+let bsDuration    = 30;
+let bsRunning     = false;
+let bsTimers      = [];
+let bsStartTime   = null;
+let bsProgressIv  = null;
+let bsAudioBuffers = [];   // decoded AudioBuffer for each line
+let bsCurrentSource = null;
+
+function selectBsDur(mins, el) {
+  document.querySelectorAll('#bs-30,#bs-45,#bs-60,#bs-90').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  bsDuration = mins;
+}
+
+// ── Fetch one line → decoded AudioBuffer via proxy ───────
+async function fetchLineAudio(text) {
+  const resp = await fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
+  });
+  if (!resp.ok) throw new Error(`TTS error ${resp.status}: ${await resp.text()}`);
+  const arrayBuf = await resp.arrayBuffer();
+  return await getAC().decodeAudioData(arrayBuf);
+}
+
+// ── Pre-generate all audio, then begin ───────────────────
+async function startBodyScan() {
+  unlockAudio();
+  const btn    = document.getElementById('bs-begin-btn');
+  const status = document.getElementById('bs-loading-status');
+
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+
+  const script = buildScript(bsDuration);
+  const total  = script.length;
+  bsAudioBuffers = [];
+
+  status.textContent = 'Preparing your session…';
+
+  try {
+    for (let i = 0; i < total; i++) {
+      if (!btn.disabled) return; // cancelled mid-load
+      status.textContent = `Preparing… ${Math.round((i / total) * 100)}%`;
+      const buf = await fetchLineAudio(script[i].text);
+      bsAudioBuffers.push({ buffer: buf, pauseAfter: script[i].pauseAfter });
+    }
+  } catch(err) {
+    status.textContent = `Error: ${err.message}`;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    return;
+  }
+
+  // All audio ready — go dark
+  status.textContent = '';
+  btn.disabled = false;
+  btn.style.opacity = '1';
+
+  bsRunning   = true;
+  bsStartTime = Date.now();
+
+  const overlay = document.getElementById('eyes-closed-overlay');
+  overlay.style.display = 'flex';
+  document.getElementById('ec-progress-wrap').style.display = 'flex';
+  requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('faded-in')));
+
+  // Total duration = sum of all audio durations + pauseAfters
+  const totalMs = bsAudioBuffers.reduce((s, b) => s + b.buffer.duration * 1000 + b.pauseAfter, 0);
+  startProgressBar(totalMs);
+
+  softBell(280, 3.5);
+  const t = setTimeout(() => playLineSequence(0), 2000);
+  bsTimers.push(t);
+}
+
+// ── Play decoded buffers sequentially ────────────────────
+function playLineSequence(index) {
+  if (!bsRunning || index >= bsAudioBuffers.length) {
+    if (bsRunning) finishBodyScan();
+    return;
+  }
+
+  const { buffer, pauseAfter } = bsAudioBuffers[index];
+  const ac  = getAC();
+
+  // Route voice through a gain node that sits above masterGain
+  // so sleep sounds and voice are independently controlled
+  const voiceGain = ac.createGain();
+  voiceGain.gain.value = 1.0;
+  voiceGain.connect(ac.destination);
+
+  const src = ac.createBufferSource();
+  src.buffer = buffer;
+  src.connect(voiceGain);
+
+  bsCurrentSource = src;
+
+  src.onended = () => {
+    if (!bsRunning) return;
+    const t = setTimeout(() => playLineSequence(index + 1), pauseAfter);
+    bsTimers.push(t);
+  };
+
+  src.start();
+}
+
+// ── Progress bar ──────────────────────────────────────────
+function startProgressBar(totalMs) {
+  const bar    = document.getElementById('ec-progress-bar');
+  const timeEl = document.getElementById('ec-time-left');
+  bsProgressIv = setInterval(() => {
+    const elapsed = Date.now() - bsStartTime;
+    bar.style.width = Math.min((elapsed / totalMs) * 100, 100) + '%';
+    const remSec = Math.max(0, Math.round((totalMs - elapsed) / 1000));
+    const m = Math.floor(remSec / 60), s = remSec % 60;
+    timeEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  }, 1000);
+}
+
+function finishBodyScan() {
+  bsRunning = false;
+  clearInterval(bsProgressIv);
+  bsTimers.forEach(clearTimeout); bsTimers = [];
+  softBell(220, 4.5);
+  setTimeout(() => softBell(264, 4), 2200);
+  const overlay = document.getElementById('eyes-closed-overlay');
+  setTimeout(() => {
+    overlay.classList.remove('faded-in');
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      document.getElementById('ec-progress-wrap').style.display = 'none';
+      document.getElementById('ec-progress-bar').style.width = '0%';
+      document.getElementById('ec-phase-hint').textContent = '';
+    }, 2200);
+  }, 5000);
+}
+
+function stopBodyScan() {
+  bsRunning = false;
+  clearInterval(bsProgressIv);
+  bsTimers.forEach(clearTimeout); bsTimers = [];
+  try { bsCurrentSource && bsCurrentSource.stop(); } catch(e) {}
+  bsCurrentSource = null;
+  const overlay = document.getElementById('eyes-closed-overlay');
+  overlay.classList.remove('faded-in');
+  setTimeout(() => {
+    overlay.style.display = 'none';
+    document.getElementById('ec-progress-wrap').style.display = 'none';
+    document.getElementById('ec-progress-bar').style.width = '0%';
+    document.getElementById('ec-phase-hint').textContent = '';
+  }, 2200);
+}
+
+function handleOverlayTap() { stopBodyScan(); }
+
+// ══════════════════════════════════════════
+// TIPS
+// ══════════════════════════════════════════
+const TIPS = [
+  "Keep your room between 65–68°F. A cool environment signals to your body that it's time to sleep.",
+  "Avoid blue light for 30 minutes before bed. Your melatonin will thank you.",
+  "The 4-6 breathing pattern — with a longer exhale — activates your parasympathetic nervous system.",
+  "Consistent sleep and wake times anchor your circadian rhythm more than anything else.",
+  "A warm bath 1–2 hours before bed can help you fall asleep faster by cooling your core temperature.",
+  "Magnesium glycinate taken before bed can support deeper, more restful sleep.",
+  "Write down your worries before lying down. Getting them on paper quiets the mind.",
+  "Darkness is the most powerful sleep trigger. Even small light leaks can disrupt melatonin.",
+];
+document.getElementById('tip-text').textContent = TIPS[Math.floor(Math.random()*TIPS.length)];
+</script>
+</body>
+</html>
